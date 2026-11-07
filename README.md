@@ -8,7 +8,7 @@ A Windows desktop app that counts clearly recognized instances of `delta` spoken
 2. Launch **Delta Chest Counter** from the Start menu or Desktop shortcut. Right-click its shortcut and choose **Pin to taskbar** for one-click launch.
 3. Select **Start listening** and allow microphone access if Windows asks.
 
-Say `delta` naturally. Recognition is biased toward that word, and each recognized occurrence increases the count. Use **Reset count** to clear it and **Keep on top** to keep the app window above other windows.
+Say `delta` naturally. Recognition is biased toward that word, and each recognized occurrence increases the count. Use **Reset count** to clear it and **Keep on top** to keep the app window above other windows. Select **Show mini counter** for a small, number-only overlay that stays above other windows; drag it anywhere on screen and select **Hide mini counter** when you no longer need it.
 
 The app listens only while its **Listening** status is shown. The count is stored in your Windows local app data and survives app updates and reinstalls. Microphone access can also be managed in Windows Settings under Privacy & security > Microphone.
 

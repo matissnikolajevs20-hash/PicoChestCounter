@@ -46,6 +46,9 @@ class DeltaChestCounter:
         self.root.minsize(440, 440)
         self.root.configure(bg=COLORS["background"])
         self.always_on_top = tk.BooleanVar(value=False)
+        self.mini_counter = None
+        self.mini_count_label = None
+        self.mini_drag_start = None
 
         self.events = queue.Queue()
         self.audio_queue = queue.Queue(maxsize=24)
@@ -105,13 +108,22 @@ class DeltaChestCounter:
         )
         self.count_label.pack(anchor="w", pady=(16, 0))
 
+        count_details = tk.Frame(outer, bg=COLORS["background"])
+        count_details.pack(fill="x", pady=(0, 25))
         tk.Label(
-            outer,
+            count_details,
             text="CHESTS OPENED",
             bg=COLORS["background"],
             fg=COLORS["accent"],
             font=("Segoe UI", 11, "bold"),
-        ).pack(anchor="w", pady=(0, 25))
+        ).pack(side="left")
+        self.mini_counter_button = ttk.Button(
+            count_details,
+            text="Show mini counter",
+            style="Quiet.TButton",
+            command=self.toggle_mini_counter,
+        )
+        self.mini_counter_button.pack(side="right")
 
         self.listen_button = ttk.Button(
             outer,
@@ -266,7 +278,7 @@ class DeltaChestCounter:
                 self.heard_label.configure(text=text)
                 if matches:
                     self.count += matches
-                    self.count_label.configure(text=f"{self.count:,}")
+                    self.update_count_display()
                     try:
                         self.save_count()
                     except OSError as error:
@@ -465,8 +477,59 @@ class DeltaChestCounter:
     def reset_count(self):
         if messagebox.askyesno("Reset count", "Reset the chest count to zero?", parent=self.root):
             self.count = 0
-            self.count_label.configure(text="0")
+            self.update_count_display()
             self.save_count()
+
+    def update_count_display(self):
+        formatted_count = f"{self.count:,}"
+        self.count_label.configure(text=formatted_count)
+        if self.mini_count_label is not None:
+            self.mini_count_label.configure(text=formatted_count)
+
+    def toggle_mini_counter(self):
+        if self.mini_counter is not None:
+            self.mini_counter.destroy()
+            self.mini_counter = None
+            self.mini_count_label = None
+            self.mini_counter_button.configure(text="Show mini counter")
+            return
+
+        mini_counter = tk.Toplevel(self.root)
+        self.mini_counter = mini_counter
+        mini_counter.overrideredirect(True)
+        mini_counter.attributes("-topmost", True)
+        mini_counter.configure(bg=COLORS["panel"])
+        self.mini_count_label = tk.Label(
+            mini_counter,
+            text=f"{self.count:,}",
+            bg=COLORS["panel"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 30, "bold"),
+            padx=18,
+            pady=10,
+        )
+        self.mini_count_label.pack()
+        mini_counter.geometry("+40+40")
+        for widget in (mini_counter, self.mini_count_label):
+            widget.bind("<ButtonPress-1>", self.start_mini_counter_drag)
+            widget.bind("<B1-Motion>", self.move_mini_counter)
+        self.mini_counter_button.configure(text="Hide mini counter")
+
+    def start_mini_counter_drag(self, event):
+        self.mini_drag_start = (
+            event.x_root,
+            event.y_root,
+            self.mini_counter.winfo_x(),
+            self.mini_counter.winfo_y(),
+        )
+
+    def move_mini_counter(self, event):
+        if self.mini_drag_start is None:
+            return
+        start_x, start_y, window_x, window_y = self.mini_drag_start
+        x = window_x + event.x_root - start_x
+        y = window_y + event.y_root - start_y
+        self.mini_counter.geometry(f"+{x}+{y}")
 
     def close(self):
         if self.update_install_running:
