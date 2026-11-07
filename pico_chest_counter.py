@@ -36,6 +36,7 @@ COLORS = {
     "green": "#73D2A0",
     "red": "#F08080",
 }
+TRANSPARENT_COLOR = "#010203"
 
 
 class DeltaChestCounter:
@@ -505,11 +506,12 @@ class DeltaChestCounter:
         self.mini_counter = mini_counter
         mini_counter.overrideredirect(True)
         mini_counter.attributes("-topmost", True)
-        mini_counter.configure(bg=COLORS["panel"])
+        mini_counter.configure(bg=TRANSPARENT_COLOR)
+        mini_counter.attributes("-transparentcolor", TRANSPARENT_COLOR)
         self.mini_count_label = tk.Label(
             mini_counter,
             text=f"{self.count:,}",
-            bg=COLORS["panel"],
+            bg=TRANSPARENT_COLOR,
             fg=COLORS["text"],
             font=("Segoe UI", 30, "bold"),
             padx=18,

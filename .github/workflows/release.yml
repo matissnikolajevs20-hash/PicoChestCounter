@@ -127,8 +127,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          gh release create "$env:GITHUB_REF_NAME" `
-            "dist\installer\PicoChestCounter-Setup.exe" `
-            "PicoChestCounter.zip" `
-            --title "Delta Chest Counter $env:GITHUB_REF_NAME" `
-            --generate-notes
+          $tag = $env:GITHUB_REF_NAME
+          $assets = @(
+            "dist\installer\PicoChestCounter-Setup.exe",
+            "PicoChestCounter.zip"
+          )
+          gh release view "$tag" --repo "$env:GITHUB_REPOSITORY" --json tagName *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload "$tag" @assets --repo "$env:GITHUB_REPOSITORY" --clobber
+          } else {
+            gh release create "$tag" @assets `
+              --repo "$env:GITHUB_REPOSITORY" `
+              --title "Delta Chest Counter $tag" `
+              --generate-notes
+          }
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to publish release assets for $tag."
+          }
