@@ -1,0 +1,62 @@
+name: Publish app update
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "${RELEASE_TAG#v}" = "$(tr -d '\r\n' < app_version.txt)"
+
+      - name: Build update archive
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import zipfile
+          from pathlib import Path
+
+          files = [
+              "pico_chest_counter.py",
+              "updater.py",
+              "app_version.txt",
+              "requirements.txt",
+              "setup.bat",
+              "setup.ps1",
+              "run.bat",
+              "share.bat",
+              "share.ps1",
+              "README.md",
+          ]
+          with zipfile.ZipFile("PicoChestCounter.zip", "w", zipfile.ZIP_DEFLATED) as archive:
+              for name in files:
+                  archive.write(name, name)
+              archive.writestr(
+                  "update-config.json",
+                  json.dumps({"repository": os.environ["GITHUB_REPOSITORY"]}, indent=2) + "\n",
+              )
+          PY
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" PicoChestCounter.zip \
+            --title "Delta Chest Counter $GITHUB_REF_NAME" \
+            --generate-notes
