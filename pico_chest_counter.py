@@ -225,7 +225,7 @@ class DeltaChestCounter:
             model = Model(str(MODEL_DIR))
             device_info = sd.query_devices(kind="input")
             sample_rate = int(device_info["default_samplerate"])
-            recognizer = KaldiRecognizer(model, sample_rate, '["delta", "[unk]"]')
+            recognizer = KaldiRecognizer(model, sample_rate)
             self.events.put(("status", "Listening", COLORS["green"]))
 
             def audio_callback(indata, frames, time_info, status):

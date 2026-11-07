@@ -25,6 +25,9 @@ class SpeechMatchingTests(unittest.TestCase):
     def test_does_not_match_part_of_another_word(self):
         self.assertEqual(count_delta_matches("deltas and alphabet"), 0)
 
+    def test_does_not_count_similar_sounding_words(self):
+        self.assertEqual(count_delta_matches("dildo"), 0)
+
 
 class VersionTests(unittest.TestCase):
     def test_parses_release_versions(self):
