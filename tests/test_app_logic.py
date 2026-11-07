@@ -8,6 +8,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from pico_chest_counter import count_delta_matches
+import updater
 from updater import (
     ReleaseInfo,
     UpdateCheckError,
@@ -80,8 +81,66 @@ class UpdateDiscoveryTests(unittest.TestCase):
         self.assertIn("v1.0.2\nSecond change", update.notes)
         self.assertNotIn("Preview", update.notes)
 
+    def test_installed_app_prefers_the_windows_installer_asset(self):
+        release = {
+            "tag_name": "v1.0.1",
+            "draft": False,
+            "prerelease": False,
+            "body": "Branded installer",
+            "assets": [
+                {
+                    "name": "PicoChestCounter.zip",
+                    "browser_download_url": "https://example.test/source.zip",
+                },
+                {
+                    "name": "PicoChestCounter-Setup.exe",
+                    "browser_download_url": "https://example.test/setup.exe",
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            app_dir = Path(temp_dir)
+            (app_dir / "app_version.txt").write_text("1.0.0", encoding="utf-8")
+            (app_dir / "update-config.json").write_text(
+                json.dumps({"repository": "owner/repo"}), encoding="utf-8"
+            )
+            with (
+                patch.object(updater.sys, "frozen", True, create=True),
+                patch("updater._request_json", return_value=[release]),
+            ):
+                update = find_available_update(app_dir)
+
+        self.assertIsNotNone(update)
+        self.assertEqual(update.download_url, "https://example.test/setup.exe")
+
 
 class UpdateInstallationTests(unittest.TestCase):
+    def test_frozen_app_starts_downloaded_installer_handoff(self):
+        release = ReleaseInfo(
+            current_version="1.0.0",
+            version="v1.0.1",
+            notes="Branded installer",
+            download_url="https://example.test/setup.exe",
+            sha256=hashlib.sha256(b"installer").hexdigest(),
+        )
+        response = io.BytesIO(b"installer")
+        with tempfile.TemporaryDirectory() as temp_dir:
+            with (
+                patch.object(updater.sys, "frozen", True, create=True),
+                patch("updater.tempfile.gettempdir", return_value=temp_dir),
+                patch("updater.subprocess.Popen") as popen,
+                patch("updater.urllib.request.urlopen", return_value=response),
+            ):
+                install_update(temp_dir, release)
+
+            popen.assert_called_once()
+            command_script = Path(popen.call_args.args[0][-1])
+            self.assertTrue(command_script.exists())
+            self.assertIn(
+                "/SILENT /SUPPRESSMSGBOXES /NORESTART",
+                command_script.read_text(encoding="utf-8"),
+            )
+
     def test_installs_only_root_app_files_and_checks_digest(self):
         package = io.BytesIO()
         with zipfile.ZipFile(package, "w") as archive:

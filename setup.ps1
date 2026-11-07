@@ -1,59 +1,45 @@
 $ErrorActionPreference = "Stop"
-$appDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$venvDir = Join-Path $appDir ".venv"
-$python = Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"
+$repository = "matissnikolajevs20-hash/PicoChestCounter"
+$apiUrl = "https://api.github.com/repos/$repository/releases/latest"
+$headers = @{
+    Accept = "application/vnd.github+json"
+    "User-Agent" = "PicoChestCounter-Setup"
+}
 
-if (-not (Test-Path $python)) {
-    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
-    if ($pythonCommand) {
-        $python = $pythonCommand.Source
-    } else {
-        throw "Python 3.12 was not found. Install it from python.org, then run setup.bat again."
+Write-Host "Finding the latest Delta Chest Counter installer..."
+$release = Invoke-RestMethod -Uri $apiUrl -Headers $headers -TimeoutSec 15
+$asset = $release.assets | Where-Object {
+    $_.name -eq "PicoChestCounter-Setup.exe"
+} | Select-Object -First 1
+if (-not $asset -or $asset.browser_download_url -notmatch '^https://') {
+    throw "Release $($release.tag_name) does not contain PicoChestCounter-Setup.exe yet."
+}
+
+$installerPath = Join-Path $env:TEMP "PicoChestCounter-Setup.exe"
+Write-Host "Downloading app installer..."
+Invoke-WebRequest -Uri $asset.browser_download_url -Headers $headers -OutFile $installerPath -TimeoutSec 120
+
+if ($asset.digest -match '^sha256:([0-9a-fA-F]{64})$') {
+    $actualDigest = (Get-FileHash -Path $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actualDigest -ne $Matches[1].ToLowerInvariant()) {
+        Remove-Item -LiteralPath $installerPath -Force
+        throw "The installer download failed its SHA-256 integrity check."
     }
 }
 
-Write-Host "Creating the app's Python environment..."
-if (-not (Test-Path (Join-Path $venvDir "Scripts\python.exe"))) {
-    & $python -m venv $venvDir
-}
-$venvPython = Join-Path $venvDir "Scripts\python.exe"
-
-Write-Host "Installing speech recognition and microphone libraries..."
-& $venvPython -m pip install --upgrade pip
-& $venvPython -m pip install -r (Join-Path $appDir "requirements.txt")
-
-$modelDir = Join-Path $appDir "vosk-model-small-en-us-0.15"
-if (-not (Test-Path $modelDir)) {
-    $zipPath = Join-Path $env:TEMP "vosk-model-small-en-us-0.15.zip"
-    $modelUrl = "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
-    Write-Host "Downloading the offline English speech model..."
-    Invoke-WebRequest -Uri $modelUrl -OutFile $zipPath
-    Expand-Archive -Path $zipPath -DestinationPath $appDir -Force
-    Remove-Item $zipPath -Force
+$appDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$sourceCount = Join-Path $appDir "chest_count.json"
+$dataDir = Join-Path $env:LOCALAPPDATA "DeltaChestCounter"
+$targetCount = Join-Path $dataDir "chest_count.json"
+if ((Test-Path -LiteralPath $sourceCount) -and -not (Test-Path -LiteralPath $targetCount)) {
+    New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+    Copy-Item -LiteralPath $sourceCount -Destination $targetCount
 }
 
-$pythonw = Join-Path $venvDir "Scripts\pythonw.exe"
-$script = Join-Path $appDir "pico_chest_counter.py"
-$shell = New-Object -ComObject WScript.Shell
-$desktopShortcut = $shell.CreateShortcut(
-    (Join-Path ([Environment]::GetFolderPath("Desktop")) "Delta Chest Counter.lnk")
-)
-$desktopShortcut.TargetPath = $pythonw
-$desktopShortcut.Arguments = "`"$script`""
-$desktopShortcut.WorkingDirectory = $appDir
-$desktopShortcut.Description = "Launch Delta Chest Counter"
-$desktopShortcut.Save()
-
-$startMenu = Join-Path ([Environment]::GetFolderPath("Programs")) "Delta Chest Counter"
-New-Item -ItemType Directory -Path $startMenu -Force | Out-Null
-$startShortcut = $shell.CreateShortcut(
-    (Join-Path $startMenu "Delta Chest Counter.lnk")
-)
-$startShortcut.TargetPath = $pythonw
-$startShortcut.Arguments = "`"$script`""
-$startShortcut.WorkingDirectory = $appDir
-$startShortcut.Description = "Launch Delta Chest Counter"
-$startShortcut.Save()
-
-Write-Host "Setup complete. Use the desktop or Start menu shortcut to launch the app."
-Write-Host "Right-click the shortcut and choose Pin to taskbar for one-click access."
+Write-Host "Starting the Delta Chest Counter installer..."
+$process = Start-Process -FilePath $installerPath -Wait -PassThru
+if ($process.ExitCode -ne 0) {
+    throw "The installer exited with code $($process.ExitCode)."
+}
+Remove-Item -LiteralPath $installerPath -Force -ErrorAction SilentlyContinue
+Write-Host "Setup finished. Launch Delta Chest Counter from the Start menu or Desktop."

@@ -20,10 +20,12 @@ $files = @(
     "setup.bat",
     "setup.ps1",
     "run.bat",
+    "share.bat",
+    "share.ps1",
     "README.md"
 ) | ForEach-Object { Join-Path $appDir $_ }
 $zipPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "PicoChestCounter.zip"
 
 Compress-Archive -Path $files -DestinationPath $zipPath -Force
-Write-Host "Shareable app zip created at: $zipPath"
-Write-Host "Send this zip to new users. Push a matching vX.Y.Z tag to GitHub to publish future updates automatically."
+Write-Host "Bootstrap source zip created at: $zipPath"
+Write-Host "New users should download PicoChestCounter-Setup.exe from the GitHub Releases page."

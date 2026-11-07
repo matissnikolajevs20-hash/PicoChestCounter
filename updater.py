@@ -3,6 +3,9 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
 import urllib.error
 import urllib.request
 import zipfile
@@ -24,6 +27,7 @@ APP_FILES = {
     "README.md",
 }
 RELEASE_ASSET = "PicoChestCounter.zip"
+INSTALLER_ASSET = "PicoChestCounter-Setup.exe"
 RELEASE_API_TIMEOUT = 8
 DOWNLOAD_TIMEOUT = 60
 
@@ -134,17 +138,18 @@ def find_available_update(app_dir):
     latest_assets = latest_release.get("assets", [])
     if not isinstance(latest_assets, list):
         raise UpdateCheckError(f"Release {latest_tag} has an invalid asset list.")
+    asset_name = INSTALLER_ASSET if getattr(sys, "frozen", False) else RELEASE_ASSET
     asset = next(
         (
             item
             for item in latest_assets
-            if isinstance(item, dict) and item.get("name") == RELEASE_ASSET
+            if isinstance(item, dict) and item.get("name") == asset_name
         ),
         None,
     )
     if asset is None:
         raise UpdateCheckError(
-            f"Release {latest_tag} is missing the {RELEASE_ASSET} asset."
+            f"Release {latest_tag} is missing the {asset_name} asset."
         )
     download_url = asset.get("browser_download_url", "")
     if not isinstance(download_url, str) or not download_url.startswith("https://"):
@@ -187,6 +192,10 @@ def install_update(app_dir, release):
         actual_digest = hashlib.sha256(archive_data).hexdigest()
         if actual_digest != release.sha256:
             raise UpdateCheckError("The downloaded update failed its SHA-256 check.")
+
+    if getattr(sys, "frozen", False):
+        _launch_installer_update(archive_data, release)
+        return
 
     try:
         with TemporaryDirectory(
@@ -262,4 +271,51 @@ def install_update(app_dir, release):
     except (OSError, zipfile.BadZipFile, RuntimeError) as error:
         raise UpdateCheckError(
             f"Could not install update {release.version}: {error}"
+        ) from error
+
+
+def _launch_installer_update(installer_data, release):
+    installer_path = None
+    script_path = None
+    try:
+        temp_dir = Path(tempfile.gettempdir())
+        with tempfile.NamedTemporaryFile(
+            prefix="PicoChestCounter-", suffix=".exe", dir=temp_dir, delete=False
+        ) as installer:
+            installer.write(installer_data)
+            installer_path = Path(installer.name)
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix="PicoChestCounter-update-",
+            suffix=".cmd",
+            dir=temp_dir,
+            delete=False,
+        ) as script:
+            script_path = Path(script.name)
+            script.write(
+                "@echo off\r\n"
+                "timeout /t 2 /nobreak >nul\r\n"
+                f'start "" /wait "{installer_path}" /SILENT /SUPPRESSMSGBOXES /NORESTART\r\n'
+                f'del "{installer_path}"\r\n'
+                'del "%~f0"\r\n'
+            )
+        subprocess.Popen(
+            [os.environ.get("COMSPEC", "cmd.exe"), "/c", str(script_path)],
+            creationflags=subprocess.DETACHED_PROCESS
+            | subprocess.CREATE_NEW_PROCESS_GROUP,
+            close_fds=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError as error:
+        for path in (installer_path, script_path):
+            if path is not None:
+                try:
+                    path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+        raise UpdateCheckError(
+            f"Could not launch update {release.version}: {error}"
         ) from error

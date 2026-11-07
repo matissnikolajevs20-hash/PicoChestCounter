@@ -16,9 +16,16 @@ from updater import (
     install_update,
 )
 
-APP_DIR = Path(__file__).resolve().parent
-MODEL_DIR = APP_DIR / "vosk-model-small-en-us-0.15"
-COUNT_FILE = APP_DIR / "chest_count.json"
+IS_FROZEN = getattr(sys, "frozen", False)
+APP_DIR = Path(sys.executable).resolve().parent if IS_FROZEN else Path(__file__).resolve().parent
+RESOURCE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR))
+MODEL_DIR = RESOURCE_DIR / "vosk-model-small-en-us-0.15"
+if IS_FROZEN:
+    DATA_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData" / "Local"))
+    DATA_DIR /= "DeltaChestCounter"
+    COUNT_FILE = DATA_DIR / "chest_count.json"
+else:
+    COUNT_FILE = APP_DIR / "chest_count.json"
 
 COLORS = {
     "background": "#111820",
@@ -166,6 +173,7 @@ class DeltaChestCounter:
 
     def load_count(self):
         try:
+            COUNT_FILE.parent.mkdir(parents=True, exist_ok=True)
             data = json.loads(COUNT_FILE.read_text(encoding="utf-8"))
             return max(0, int(data.get("count", 0)))
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
@@ -324,6 +332,9 @@ class DeltaChestCounter:
             elif event[0] == "update-install-finished":
                 self.update_install_running = False
                 self.update_button.configure(state="normal")
+                if IS_FROZEN:
+                    self.root.after_idle(self.root.destroy)
+                    return
                 try:
                     executable = sys.executable
                     os.execv(

@@ -1,8 +1,8 @@
 @echo off
-set "APP_DIR=%~dp0"
-if not exist "%APP_DIR%.venv\Scripts\pythonw.exe" (
-    echo Run setup.bat first to install the app.
+set "APP_EXE=%LOCALAPPDATA%\Programs\Delta Chest Counter\DeltaChestCounter.exe"
+if not exist "%APP_EXE%" (
+    echo Delta Chest Counter is not installed yet. Run setup.bat first.
     pause
     exit /b 1
 )
-start "Pico Chest Counter" "%APP_DIR%.venv\Scripts\pythonw.exe" "%APP_DIR%pico_chest_counter.py"
+start "" "%APP_EXE%"

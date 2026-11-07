@@ -1,5 +1,8 @@
 .venv/
+.build-venv/
 __pycache__/
 tests/__pycache__/
 vosk-model-small-en-us-0.15/
 chest_count.json
+build/
+dist/

@@ -2,24 +2,26 @@
 
 A Windows desktop app that counts clearly recognized instances of `delta` spoken into the default microphone. Speech recognition runs locally after setup; audio is not sent to an online service. The count is saved in `chest_count.json` beside the app.
 
-## Set up and launch
+## Install and launch
 
-1. Install Python 3.12 or newer on Windows.
-2. Double-click `setup.bat` and wait for it to finish. It installs the app's Python packages and downloads the offline English speech model.
-3. Use the **Delta Chest Counter** shortcut on your Desktop or in the Start menu. Right-click either shortcut and choose **Pin to taskbar** for one-click launch.
-4. Select **Start listening** and allow microphone access if Windows asks.
+1. Download and run [PicoChestCounter-Setup.exe](https://github.com/matissnikolajevs20-hash/PicoChestCounter/releases/latest). Setup installs the app and offline English speech model without requiring Python.
+2. Launch **Delta Chest Counter** from the Start menu or Desktop shortcut. Right-click its shortcut and choose **Pin to taskbar** for one-click launch.
+3. Select **Start listening** and allow microphone access if Windows asks.
 
 Say `delta` naturally. Recognition is biased toward that word, and each recognized occurrence increases the count. Use **Reset count** to clear it and **Keep on top** to keep the app window above other windows.
 
-The app listens only while its **Listening** status is shown. Microphone access can also be managed in Windows Settings under Privacy & security > Microphone.
+The app listens only while its **Listening** status is shown. The count is stored in your Windows local app data and survives app updates and reinstalls. Microphone access can also be managed in Windows Settings under Privacy & security > Microphone.
 
 ## Share the app and publish updates
 
-Automatic updates use **public GitHub Releases**. GitHub is not configured until you create/share the first zip:
+Automatic updates use **public GitHub Releases**:
 
-1. Create a public GitHub repository for the app.
-2. Double-click `share.bat`, enter the repository as `owner/name`, then send the resulting `PicoChestCounter.zip` to friends. They unzip it and run `setup.bat` once; Python 3.12+ and internet access are needed for setup. Copies shared before the updater was added must be replaced with this first updated zip once.
-3. Put the app files in the repository's root and push them to GitHub. Keep `update-config.json` set to that repository's `owner/name`.
-4. For each update, change `app_version.txt` to a higher `major.minor.patch` version, commit and push the changes, then push a matching version tag, such as `v1.0.1` (`git tag v1.0.1`, then `git push origin v1.0.1`). The included GitHub Actions workflow builds `PicoChestCounter.zip` and publishes it as a release automatically. The tag must match the value in `app_version.txt`; the release notes are generated from commits since the previous tag.
+1. Share the installer from the [latest release](https://github.com/matissnikolajevs20-hash/PicoChestCounter/releases/latest). Python is not needed on users' computers.
+2. For each update, change `app_version.txt` to a higher `major.minor.patch` version, commit and push the changes, then push a matching version tag, such as `v1.0.2` (`git tag v1.0.2`, then `git push origin v1.0.2`).
+3. The included GitHub Actions workflow runs tests, bundles the offline model into the branded Windows app, builds `PicoChestCounter-Setup.exe`, and publishes it alongside `PicoChestCounter.zip`. The tag must match the value in `app_version.txt`; GitHub generates release notes from commits since the previous tag.
 
-Installed copies check for updates when launched and whenever **Check for updates** is selected. If a newer release is found, the app shows its notes for every version since the installed version. The user can choose **Install update** or **Later**. Installing downloads the release zip, checks its SHA-256 digest when GitHub provides one, installs the app files, and restarts the app. Counts are kept locally and are not overwritten. Updates require internet access; the app still opens if the update check fails. Creating a public GitHub repository and pushing a tagged version are required to host releases.
+Installed apps check for updates when launched and whenever **Check for updates** is selected. If a newer release is found, the app shows its notes for every version since the installed version and lets the user choose **Install update** or **Later**. The app downloads and verifies the installer, then installs it and preserves the local count. Updates require internet access; the app still opens if the update check fails. Older source-folder installs can continue receiving the legacy source update zip; use `setup.bat` to switch them to the installed app.
+
+## Building from source
+
+On Windows, run `build_windows.ps1`. It creates a separate build environment, downloads the offline model, bundles the app, and compiles the installer. Python 3.12 and Inno Setup 6 are required for local builds.
