@@ -5,9 +5,9 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from pico_chest_counter import count_delta_matches
+from pico_chest_counter import DeltaChestCounter, count_delta_matches
 import updater
 from updater import (
     ReleaseInfo,
@@ -190,6 +190,43 @@ class UpdateInstallationTests(unittest.TestCase):
             with patch("updater.urllib.request.urlopen", return_value=response):
                 with self.assertRaisesRegex(UpdateCheckError, "SHA-256"):
                     install_update(temp_dir, release)
+
+
+class UpdatePromptTests(unittest.TestCase):
+    def test_yes_starts_installing_the_available_update(self):
+        app = DeltaChestCounter.__new__(DeltaChestCounter)
+        app.root = MagicMock()
+        app.update_dialog = None
+        dialog = MagicMock()
+        dialog.winfo_exists.return_value = False
+        buttons = []
+
+        def make_button(*args, **kwargs):
+            button = MagicMock()
+            button.text = kwargs["text"]
+            button.command = kwargs["command"]
+            buttons.append(button)
+            return button
+
+        release = ReleaseInfo(
+            current_version="1.0.0",
+            version="v1.0.1",
+            notes="Updated",
+            download_url="https://example.test/update.zip",
+            sha256=None,
+        )
+        with (
+            patch("pico_chest_counter.tk.Toplevel", return_value=dialog),
+            patch("pico_chest_counter.tk.Label"),
+            patch("pico_chest_counter.tk.Text"),
+            patch("pico_chest_counter.tk.Frame"),
+            patch("pico_chest_counter.ttk.Button", side_effect=make_button),
+            patch.object(app, "confirm_update") as confirm_update,
+        ):
+            app.show_update_dialog(release)
+            yes_button = next(button for button in buttons if button.text == "Yes")
+            yes_button.command()
+            confirm_update.assert_called_once_with(dialog, release)
 
 
 if __name__ == "__main__":

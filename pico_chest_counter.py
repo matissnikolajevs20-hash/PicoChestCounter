@@ -422,6 +422,13 @@ class DeltaChestCounter:
         ).pack(anchor="w", padx=22, pady=(20, 4))
         tk.Label(
             dialog,
+            text="Would you like to install this update now?",
+            bg=COLORS["background"],
+            fg=COLORS["text"],
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor="w", padx=22, pady=(0, 8))
+        tk.Label(
+            dialog,
             text=f"Changes since your installed version {release.current_version}:",
             bg=COLORS["background"],
             fg=COLORS["muted"],
@@ -447,13 +454,13 @@ class DeltaChestCounter:
         buttons.pack(fill="x", padx=22, pady=18)
         ttk.Button(
             buttons,
-            text="Later",
+            text="No",
             style="Quiet.TButton",
             command=dialog.destroy,
         ).pack(side="right")
         ttk.Button(
             buttons,
-            text="Install update",
+            text="Yes",
             style="Action.TButton",
             command=lambda: self.confirm_update(dialog, release),
         ).pack(side="right", padx=(0, 10))

@@ -20,7 +20,7 @@ Automatic updates use **public GitHub Releases**:
 2. For each update, change `app_version.txt` to a higher `major.minor.patch` version, commit and push the changes, then push a matching version tag, such as `v1.0.2` (`git tag v1.0.2`, then `git push origin v1.0.2`).
 3. The included GitHub Actions workflow runs tests, bundles the offline model into the branded Windows app, builds `PicoChestCounter-Setup.exe`, and publishes it alongside `PicoChestCounter.zip`. The tag must match the value in `app_version.txt`; GitHub generates release notes from commits since the previous tag.
 
-Installed apps check for updates when launched and whenever **Check for updates** is selected. If a newer release is found, the app shows its notes for every version since the installed version and lets the user choose **Install update** or **Later**. The app downloads and verifies the installer, then installs it and preserves the local count. Updates require internet access; the app still opens if the update check fails. Older source-folder installs can continue receiving the legacy source update zip; use `setup.bat` to switch them to the installed app.
+Installed apps check for updates when launched and whenever **Check for updates** is selected. If a newer release is found, the app asks whether you want to install it and shows notes for every version since the installed version. Select **Yes** to download and install the verified update, or **No** to keep using the current version. Your local count is preserved. Updates require internet access; the app still opens if the update check fails. Older source-folder installs can continue receiving the legacy source update zip; use `setup.bat` to switch them to the installed app.
 
 ## Building from source
 
